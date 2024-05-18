@@ -6,6 +6,8 @@
 #include <csignal> 
 #include "../Nets/Strides/Stride1.cuh"
 #include "../Activations/Activation1.cuh"
+#include "Propagator1.cuh"
+#include "../Nets/Net1.h"
 
 using namespace std;
 
@@ -39,7 +41,7 @@ __global__ void updateNetwork(double *aa, double *bb, double *cc, double *dd, do
             }
             else
             { 
-                double prev_a = activation_function(aa[IDX2]+cc[IDX2], activation_type, false); // Compute activation of previous layer.
+                double prev_a = DeviceActivation1::activation_function(aa[IDX2]+cc[IDX2], activation_type, false); // Compute activation of previous layer.
                 w = bb[IDX1]*prev_a; // Compute data for next node withouth appling the activation. 
             };
 
@@ -62,17 +64,17 @@ __global__ void updateNetwork(double *aa, double *bb, double *cc, double *dd, do
         {
             if (layer_IDX == 0)
             {
-                double w_val_last = activation_function(aa[IDX2] + cc[IDX2], activation_type, false); // Computes activation of last layer
+                double w_val_last = DeviceActivation1::activation_function(aa[IDX2] + cc[IDX2], activation_type, false); // Computes activation of last layer
                 double delta_a_last = 2.*(w_val_last - ii[connectionIDX]); // compute dC/da of last layer.
                 dd[IDX2] = delta_a_last;
 
-                ff[IDXX] = delta_a_last*activation_function(aa[IDX4]*bb[IDX3], activation_type, true); // compute dC/df of last layer;
+                ff[IDXX] = delta_a_last*DeviceActivation1::activation_function(aa[IDX4]*bb[IDX3], activation_type, true); // compute dC/df of last layer;
             };
             double w_val;
             double a_val;
             if (layer_IDX != (numLayers-1)) // Biases and activations should not be used in determining the values of nodes in first layer. (Indexing layers backwards)
             {
-                w_val = activation_function(aa[IDX4] + cc[IDX4], activation_type, false); //Computes activation of node in previous layer. 
+                w_val = DeviceActivation1::activation_function(aa[IDX4] + cc[IDX4], activation_type, false); //Computes activation of node in previous layer. 
                 a_val = w_val*bb[IDX3] + cc[IDX4];
             }
             else
@@ -80,9 +82,9 @@ __global__ void updateNetwork(double *aa, double *bb, double *cc, double *dd, do
                 w_val = aa[IDX4];
                 a_val = w_val*bb[IDX3];
             };
-            double delta_a = dd[IDX2]*activation_function(a_val, activation_type, true)*bb[IDX3]; // Derivative of cost function wrt previous node.
-            double delta_b = dd[IDX2]*activation_function(a_val, activation_type, true)*w_val;
-            double delta_c = dd[IDX2]*activation_function(a_val, activation_type, true);
+            double delta_a = dd[IDX2]*DeviceActivation1::activation_function(a_val, activation_type, true)*bb[IDX3]; // Derivative of cost function wrt previous node.
+            double delta_b = dd[IDX2]*DeviceActivation1::activation_function(a_val, activation_type, true)*w_val;
+            double delta_c = dd[IDX2]*DeviceActivation1::activation_function(a_val, activation_type, true);
 
             atomicAdd(&ee[IDX3], delta_b);
             atomicAdd(&dd[IDX4], delta_a); // All treads add to existing node and biases.
@@ -97,4 +99,321 @@ __global__ void updateNetwork(double *aa, double *bb, double *cc, double *dd, do
             // Do nothing.
         };
     };
+}
+
+namespace Propagator1
+{
+    void propagate_network(vector<double> &old_nodes, vector<double> &old_weights, vector<double> &old_biases, vector<double> &new_nodes, vector<double> &new_weights, vector<double> &new_biases, vector<int> &active_internode_connections, vector<int> &architecture, int &numLayers, int &layerIDX, bool &forward, int &sampleIDX, int &setIDX, NeuralNet1::Net1 &NET, vector<vector<vector<double>>> &raw_fit_data, int &num_layers, int &activation_type)
+    {   
+        //create points to the GPU
+        double *cudaA;
+        double *cudaB;
+        double *cudaC;
+        double *cudaD;
+        double *cudaE;
+        double *cudaF;
+        double *cudaI;
+    
+        int *cudaG;
+        int *cudaH;
+
+        int numNodesTotal = NET.nodes_length(numLayers, architecture);
+        int numConnectTotal = NET.weights_length(numLayers, architecture);
+
+        int fitSize = raw_fit_data[setIDX][sampleIDX].size();
+
+        // Allocate memory in the GPU
+        if (cudaMalloc((void**)&cudaA, numNodesTotal*sizeof(double)) != cudaSuccess)
+        {
+	        cout<<"Data could not be allocated!\n";
+        return;
+        }
+        if (cudaMalloc((void**)&cudaB, numConnectTotal*sizeof(double)) != cudaSuccess)
+        {
+	        cout<<"Data could not be allocated!\n";
+	        cudaFree(cudaA);
+        return;
+        }
+        if (cudaMalloc((void**)&cudaC, numNodesTotal*sizeof(double)) != cudaSuccess)
+        {
+	        cout<<"Data could not be allocated!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+        return;
+        }
+
+        if (cudaMalloc((void**)&cudaD, numNodesTotal*sizeof(double)) != cudaSuccess)
+        {
+	        cout<<"Data could not be allocated!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+        return;
+        }
+        if (cudaMalloc((void**)&cudaE, numConnectTotal*sizeof(double)) != cudaSuccess)
+        {
+	        cout<<"Data could not be allocated!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+        return;
+        }
+        if (cudaMalloc((void**)&cudaF, numNodesTotal*sizeof(double)) != cudaSuccess)
+        {
+	        cout<<"Data could not be allocated!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+        return;
+        }
+    
+        if (cudaMalloc((void**)&cudaG, numConnectTotal*sizeof(int)) != cudaSuccess)
+        {
+	        cout<<"Data could not be allocated!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+        return;
+        }
+        if (cudaMalloc((void**)&cudaH, numLayers*sizeof(int)) != cudaSuccess)
+        {
+	        cout<<"Data could not be allocated!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+        return;
+        }
+        if (cudaMalloc((void**)&cudaI, fitSize*sizeof(double)) != cudaSuccess)
+        {
+	        cout<<"Data could not be allocated!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+        return;
+        }
+
+        // Add vectors to GPU for processing
+        if (cudaMemcpy(cudaA, old_nodes.data(), numNodesTotal*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }
+        if (cudaMemcpy(cudaB, old_weights.data(), numConnectTotal*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }       
+        if (cudaMemcpy(cudaC, old_biases.data(), numNodesTotal*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }
+        if (cudaMemcpy(cudaD, new_nodes.data(), numNodesTotal*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }
+        if (cudaMemcpy(cudaE, new_weights.data(), numConnectTotal*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }
+        if (cudaMemcpy(cudaF, new_biases.data(), numNodesTotal*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }
+        if (cudaMemcpy(cudaG, active_internode_connections.data(), numConnectTotal*sizeof(int), cudaMemcpyHostToDevice) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }  
+        if (cudaMemcpy(cudaH, architecture.data(), numLayers*sizeof(int), cudaMemcpyHostToDevice) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        } 
+        if (cudaMemcpy(cudaI, raw_fit_data[setIDX][sampleIDX].data(), fitSize*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        } 
+    
+        // Run function. Specify grid size and block size
+        int threadsPerBlock = 16;
+        int blocksPerGrid1;
+        int blocksPerGrid2;
+
+        // Number of threads are determined based on the number of connections between current layer and next layer (propagating forward), or previous layer and current layer (propagating backwards).
+        if (forward)
+        {
+            blocksPerGrid1 = architecture[layerIDX] / threadsPerBlock + 1; 
+            blocksPerGrid2 = architecture[layerIDX+1] / threadsPerBlock + 1;
+        }
+        else
+        {
+            blocksPerGrid1 = architecture[(numLayers - 1) - layerIDX] / threadsPerBlock + 1;
+            blocksPerGrid2 = architecture[(num_layers - 1) - (layerIDX + 1)] / threadsPerBlock + 1;
+        };
+
+        dim3 blockDIM(threadsPerBlock, threadsPerBlock);
+        dim3 gridDIM(blocksPerGrid1, blocksPerGrid2);
+
+        int _activation_type = activation_type;
+    
+        updateNetwork<<< gridDIM, blockDIM >>>(cudaA, cudaB, cudaC, cudaD, cudaE, cudaF, cudaG, cudaH, cudaI, numLayers, layerIDX, _activation_type, forward);
+        gpuErrchk( cudaPeekAtLastError() );
+        gpuErrchk( cudaDeviceSynchronize() );
+
+        // Copy vectors from GPU
+        if (cudaMemcpy(new_nodes.data(), cudaD, numNodesTotal*sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }
+        if (cudaMemcpy(new_weights.data(), cudaE, numConnectTotal*sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }
+        if (cudaMemcpy(new_biases.data(), cudaF, numNodesTotal*sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess)
+        {
+	        cout<<"Alloacted memory did not accept supplied data!\n";
+	        cudaFree(cudaA);
+	        cudaFree(cudaB);
+            cudaFree(cudaC);
+            cudaFree(cudaD);
+            cudaFree(cudaE);
+            cudaFree(cudaF);
+            cudaFree(cudaG);
+            cudaFree(cudaH);
+            cudaFree(cudaI);
+	        return;
+        }
+
+        // //Unallocate data on device
+        cudaFree(cudaA);
+	    cudaFree(cudaB);
+        cudaFree(cudaC);
+        cudaFree(cudaD);
+        cudaFree(cudaE);
+        cudaFree(cudaF);
+        cudaFree(cudaG);
+        cudaFree(cudaH);
+        cudaFree(cudaI);    
+    }
 }

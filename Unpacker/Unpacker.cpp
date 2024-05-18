@@ -4,11 +4,11 @@
 #include <vector>
 #include <string>
 
-#include "Checker.h"
+#include "Unpacker.h"
 
 using namespace std;
 
-namespace set_checker
+namespace Unpacker
 {
     int samp_checker(vector<vector<double>> vecAs, int vecSizes)
     {
@@ -27,9 +27,9 @@ namespace set_checker
             iters++;
             goto start;
         };
-    }
+    };
 
-    int set_checker(vector<vector<vector<double>>> vecA, int vecSize)
+    int vec_3d_size(vector<vector<vector<double>>> vecA, int vecSize)
     {
         int iter = 0;
         int theTotal = 0;
@@ -46,5 +46,5 @@ namespace set_checker
             iter++;
             goto start;
         };
-    }
+    };
 }

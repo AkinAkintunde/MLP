@@ -1,5 +1,5 @@
-#ifndef STRIDE1
-#define STRIDE1
+#ifndef DEVICEINDEXR1
+#define DEVICEINDEXR1
 
 using namespace std;
 

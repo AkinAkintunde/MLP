@@ -1,9 +1,8 @@
-#ifndef DEVICEACTIVATION1
-#define DEVICEACTIVATION1
+#include "Activation1.h"
 
-namespace DeviceActivation1
+namespace HostActivation1
 {
-    __device__ double activation_function(double w_val, int type, bool derivative)
+    double activation_function(double w_val, int type, bool derivative)
     {
         if (type == 0)
         {
@@ -45,5 +44,3 @@ namespace DeviceActivation1
         return 0.;
     }
 }
-
-#endif
