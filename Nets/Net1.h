@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector> 
 #include <list>
+#include "NetData.h"
 
 using namespace std;
 
@@ -35,9 +36,7 @@ namespace NeuralNet1
             int get_number_of_layers();
 
         private:
-            vector<double> nodes;
-            vector<double> weights;
-            vector<double> biases;
+            struct net_data data;
 
             vector<double> cost_weights;
             vector<double> cost_bias;

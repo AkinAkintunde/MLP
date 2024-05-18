@@ -25,7 +25,7 @@ start:
     }
     else
     {
-        nodes[nodeID] = input[nodeID];
+        data.nodes[nodeID] = input[nodeID];
         nodeID++;
         goto start;
     };
@@ -36,7 +36,7 @@ int Net1::clear_set_input_nodes(vector<double> _training_data, vector<double> _f
     int ID = 0;
     fit_nodes = _fit_data;
 start:
-    if (ID == nodes.size())
+    if (ID == data.nodes.size())
     {
         return 0;
     }
@@ -44,11 +44,11 @@ start:
     {
         if (ID < input_node_size)
         {
-            nodes[ID] = _training_data[ID]; // Sets the values of the nodes in the first layer.
+            data.nodes[ID] = _training_data[ID]; // Sets the values of the nodes in the first layer.
         }
         else
         {
-            nodes[ID] = 0; // Sets the nodes in all other layers to zero.
+            data.nodes[ID] = 0; // Sets the nodes in all other layers to zero.
         };
         ID++;
         goto start;
@@ -63,11 +63,11 @@ start:
     if (ID == number_of_fit_nodes)
     {
         
-        return nodes; 
+        return data.nodes; 
     }
     else
     {
-        nodes[(nodes.size()-number_of_fit_nodes)+ID] = fit_nodes[ID];
+        data.nodes[(data.nodes.size()-number_of_fit_nodes)+ID] = fit_nodes[ID];
     };
     ID++;
     goto start;
@@ -123,11 +123,11 @@ void Net1::set_net(vector<double> network_input_data, vector<double> network_fit
     int nodes_shape = nodes_length(number_of_layers, architecture);
 
     vector<double> _nodes(nodes_shape, 0.);
-    nodes = _nodes;
+    data.nodes = _nodes;
     vector<double> _weights(weights_shape, 0.1);
-    weights = _weights;
+    data.weights = _weights;
     vector<double> _biases(nodes_shape, 0.03);  // Biases vector is equal in length to the weights vector.
-    biases = _biases;
+    data.biases = _biases;
 
     allocate_nodes();
 
@@ -139,32 +139,32 @@ void Net1::set_net(vector<double> network_input_data, vector<double> network_fit
 
 void Net1::update_nodes(vector<double> nodes_new_values)
 {
-    nodes = nodes_new_values;
+    data.nodes = nodes_new_values;
 }
 
 void Net1::update_weights(vector<double> weights_new_values)
 {
-    weights = weights_new_values;
+    data.weights = weights_new_values;
 }
 
 void Net1::update_biases(vector<double> biases_new_values)
 {
-    biases = biases_new_values;
+    data.biases = biases_new_values;
 }
 
 vector<double> Net1::get_nodes()
 {
-    return nodes;
+    return data.nodes;
 }
 
 vector<double> Net1::get_weights()
 {
-    return weights;
+    return data.weights;
 }
 
 vector<double> Net1::get_biases()
 {
-    return biases;
+    return data.biases;
 }
 
 int Net1::get_number_of_layers()

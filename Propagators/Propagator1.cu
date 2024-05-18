@@ -28,10 +28,10 @@ __global__ void updateNetwork(double *aa, double *bb, double *cc, double *dd, do
         int connectionIDX = blockIdx.y*blockDim.y + threadIdx.y; // Index of connection leaving the node.
         if (nodeIDX < hh[layer_IDX] && connectionIDX < hh[layer_IDX + 1])
         {
-            int IDX1 = internodal_data_list_indexer(nodeIDX,layer_IDX,connectionIDX,hh); // Index weights in previous(current) layer.
-            int IDX2 = nodal_data_list_indexer(nodeIDX,layer_IDX,hh); // Index nodes in previous layer.
+            int IDX1 = DeviceIndexer1::internodal_data_list_indexer(nodeIDX,layer_IDX,connectionIDX,hh); // Index weights in previous(current) layer.
+            int IDX2 = DeviceIndexer1::nodal_data_list_indexer(nodeIDX,layer_IDX,hh); // Index nodes in previous layer.
 
-            int IDX3 = nodal_data_list_indexer(connectionIDX,layer_IDX+1,hh); // Index node in next layer.
+            int IDX3 = DeviceIndexer1::nodal_data_list_indexer(connectionIDX,layer_IDX+1,hh); // Index node in next layer.
             double w;
             if (layer_IDX == 0)
             {
@@ -51,12 +51,12 @@ __global__ void updateNetwork(double *aa, double *bb, double *cc, double *dd, do
         int connectionIDX = blockIdx.x*blockDim.x + threadIdx.x; // Index of connection leaving a node.
         int nodeIDX = blockIdx.y*blockDim.y + threadIdx.y; // Node's index.
 
-        int IDX2 = nodal_data_list_indexer(connectionIDX,(numLayers-1)-layer_IDX,hh); // Node's index in next(current) layer.
+        int IDX2 = DeviceIndexer1::nodal_data_list_indexer(connectionIDX,(numLayers-1)-layer_IDX,hh); // Node's index in next(current) layer.
 
-        int IDX3 = internodal_data_list_indexer(nodeIDX,(numLayers-1)-(layer_IDX+1),connectionIDX,hh); // Index weights in previous layer.
-        int IDX4 = nodal_data_list_indexer(nodeIDX,(numLayers-1)-(layer_IDX+1),hh); // Index node and biases in previous layer.
+        int IDX3 = DeviceIndexer1::internodal_data_list_indexer(nodeIDX,(numLayers-1)-(layer_IDX+1),connectionIDX,hh); // Index weights in previous layer.
+        int IDX4 = DeviceIndexer1::nodal_data_list_indexer(nodeIDX,(numLayers-1)-(layer_IDX+1),hh); // Index node and biases in previous layer.
 
-        int IDXX = nodal_data_list_indexer(nodeIDX,(numLayers-1)-layer_IDX,hh); // For indexing bias vector at last layer.
+        int IDXX = DeviceIndexer1::nodal_data_list_indexer(nodeIDX,(numLayers-1)-layer_IDX,hh); // For indexing bias vector at last layer.
 
         if (nodeIDX < hh[(numLayers-1)-(layer_IDX+1)] && connectionIDX < hh[(numLayers-1)-layer_IDX])
         {

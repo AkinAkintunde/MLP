@@ -17,7 +17,6 @@ namespace NeuralNetPattern1
             Pattern1(int type, vector<int> _architecture, int _architecture_len);
             vector<int> get_active_nodes(int _length);
 
-            int internodal_data_list_indexer(int node_ID, int layer_ID, int connection_ID);
             int terminate_outgoing_connection_to_center_nodes(int node, int layer);
             int terminate_all_outgoing_connections_from_node(int node, int layer);
 

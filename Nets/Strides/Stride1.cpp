@@ -1,11 +1,14 @@
-#ifndef STRIDE1
-#define STRIDE1
+#include <iostream>
+#include <stdio.h>
+#include <iostream>
+#include <vector> 
+#include <list>
 
 using namespace std;
 
-namespace DeviceIndexer1
+namespace HostIndexer1
 {
-    __device__ int internodal_data_list_indexer(int node_ID, int layer_ID, int connection_ID, int *architecture)
+    int internodal_data_list_indexer(int node_ID, int layer_ID, int connection_ID, vector<int> &architecture)
     {
         int IDX = (node_ID*architecture[layer_ID+1]) + connection_ID; // architecture[layer] returns the number of nodes in a given layer. Since network is fully connected, the number of connections from a node is equal to the number of nodes in the next layer, which is indexable using architecture[layer + 1].
         int iter = 0;
@@ -22,7 +25,7 @@ namespace DeviceIndexer1
         }
     }
 
-    __device__ int nodal_data_list_indexer(int node_ID, int layer_ID, int *architecture)        
+    int nodal_data_list_indexer(int node_ID, int layer_ID, vector<int> &architecture)        
     {
         int IDX = node_ID;
         int iter = 0;
@@ -39,5 +42,3 @@ namespace DeviceIndexer1
         }
     }
 }
-
-#endif 
