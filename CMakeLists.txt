@@ -7,6 +7,7 @@ add_subdirectory(Nets)
 add_subdirectory(Propagators)
 add_subdirectory(Unpacker)
 add_subdirectory(Operations)
+add_subdirectory(RunNets)
 
 pybind11_add_module(MLP Main.cpp)
 
@@ -20,6 +21,7 @@ target_link_libraries(MLP PRIVATE
                       _MLNets
                       _MLPropagators
                       _MLUnpacker
-                      _MLOperations)
+                      _MLOperations
+                      _MLRunNets)
 
 enable_language(CUDA)

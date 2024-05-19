@@ -2,6 +2,7 @@
 #include "pybind11/stl.h"
 #include <stdio.h>
 #include "TrainNet.cuh"
+#include "RunNets/RunNet1.cuh"
 #include <pybind11/stl_bind.h>
 
 using namespace std;
@@ -26,4 +27,9 @@ PYBIND11_MODULE(MLP, m)
     .def("cost", &TrainNet::get_cost, "Returns the curent value of the cost function.")
     .def("manual_set", &TrainNet::setOfficialWeightsBiases, "Manually set the weights and biases.");
 
+    py::class_<RunNet1>(m, "RunNet")
+    .def(py::init<>())
+    .def("set", &RunNet1::set_net)
+    .def("run", &RunNet1::propagate, "Run input data through network.")
+    .def("get_node", &RunNet1::get_node, "Redurn data for a given node.");
 }
