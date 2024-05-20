@@ -6,6 +6,8 @@
 
 #include <csignal> 
 #include "Clear.cuh"
+#include "../Nets/Strides/Stride1.h"
+#include "../Nets/Strides/Stride1.cuh"
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -25,11 +27,11 @@ __global__ void clear_layer_kernel(double *aA, double *bB, bool interconnection,
     if (interconnection)
     {
         int connection = blockIdx.y*blockDim.y + threadIdx.y;
-        IDX = internodal_data_list_indexer(node, clrLayer, connection, cC);
+        IDX = DeviceIndexer1::internodal_data_list_indexer(node, clrLayer, connection, cC);
     }
     else
     {
-        IDX = nodal_data_list_indexer(node, clrLayer, cC);
+        IDX = DeviceIndexer1::nodal_data_list_indexer(node, clrLayer, cC);
     };
 
     if (IDX < length)

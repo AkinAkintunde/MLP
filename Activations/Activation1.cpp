@@ -1,4 +1,14 @@
 #include "Activation1.h"
+#include <iostream>
+#include <stdio.h>
+#include <iostream>
+#include <vector>
+#include <string>
+
+#include <cmath> 
+#include <csignal> 
+
+using namespace std;
 
 namespace HostActivation1
 {

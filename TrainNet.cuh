@@ -15,7 +15,6 @@ class TrainNet
 {
     public:
         void set_training_data(vector<vector<vector<double>>> training_data, vector<vector<vector<double>>> fit_data, int _type, vector<int> _architecture, double _learning_rate, int _activation_type);
-        vector<double> updateOfficialWeightsBiases(vector<double> vecA, vector<double> delta_vecA, double t_rate, int num_samps);
         int update_cost(int sampleIDX, int setIDX); 
 
         void compute_gpu(int iterations);
