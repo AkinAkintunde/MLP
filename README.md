@@ -35,7 +35,7 @@ import matplotlib.pyplot as plt
 
 
 ```python
-training_data = [[[2., 2.] for _ in range(4)], [[2., 2.] for _ in range(4)]] # Data to be feed into input layer.
+training_data = [[[2., 2.] for _ in range(4)], [[2., 2.] for _ in range(4)]] # Data to be fed into input layer.
 labels = [[[1. , 1., 1., 1., 1.] for _ in range(4)], [[1. , 1., 1., 1., 1.] for _ in range(4)]] # Data used to calculate error for backpropagation. 
 ```
 
