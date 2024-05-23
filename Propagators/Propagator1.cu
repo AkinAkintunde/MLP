@@ -24,7 +24,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 // Function that runs in the GPU
 __global__ void updateNetwork(double *aa, double *bb, double *cc, double *dd, double* ee, double *ff, int *gg, int *hh, double *ii, int numLayers, int layer_IDX, int activation_type, bool forward)
 {
-    if (forward)
+    if (forward) // In forward pass, nodes hold value of (weights X activations) of previous layer.
     {
         int nodeIDX = blockIdx.x*blockDim.x + threadIdx.x; // Index of a node.
         int connectionIDX = blockIdx.y*blockDim.y + threadIdx.y; // Index of connection leaving the node.

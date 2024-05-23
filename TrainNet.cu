@@ -78,6 +78,8 @@ void TrainNet::set_training_data(vector<vector<vector<double>>> training_data, v
         NET.set_net(_training_data, _fit_data, _training_data.size(), _fit_data.size(), type, architecture, architecture.size());
 
         num_layers = NET.get_number_of_layers();
+        results_weights = NET.get_weights();
+        results_biases = NET.get_biases();
 
         vector<double> _cost(raw_fit_data[0][0].size(), 0.0);
         cost = _cost;
